@@ -1,0 +1,7 @@
+# Place menu bar icons here:
+# - mic_idle.png (16x16 or 18x18, template image)
+# - mic_recording.png
+# - mic_processing.png
+#
+# For template images (auto dark/light mode), use black icons
+# and name them with @2x suffix for retina: mic_idle@2x.png

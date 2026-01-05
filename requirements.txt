@@ -1,0 +1,16 @@
+# Audio
+sounddevice>=0.4.6
+numpy>=1.21.0
+
+# Transcription
+pywhispercpp==1.4.0
+requests>=2.25.0
+
+# macOS integration
+pyobjc-framework-Cocoa>=9.0
+pyobjc-framework-Quartz>=9.0
+pyobjc-framework-ApplicationServices>=9.0
+rumps>=0.4.0
+
+# Utilities
+pyperclip>=1.8.2
