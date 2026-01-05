@@ -8,8 +8,15 @@ Uses VAD for live streaming transcription
 import sys
 import threading
 import time
+from datetime import datetime
 
 import rumps
+
+
+def _log(msg: str) -> None:
+    """Print log message with timestamp"""
+    ts = datetime.now().strftime('%H:%M:%S')
+    print(f"{ts} {msg}")
 
 from src.config import Config
 from src.shortcuts import DoubleTapShortcut
@@ -93,7 +100,7 @@ class MacHyprwhspr(rumps.App):
             return
 
         self._update_status("Ready")
-        print("[APP] Ready - Double-tap Shift to start/stop dictation")
+        _log("[APP] Ready - Double-tap Shift to start/stop dictation")
 
     def _on_shortcut(self):
         """Handle double-shift shortcut"""
@@ -119,13 +126,13 @@ class MacHyprwhspr(rumps.App):
                 self._update_icon("recording")
                 self._update_status("Listening...")
                 self._record_btn.title = "Stop Recording (Shift+Shift)"
-                print("[APP] Recording started - speak now")
+                _log("[APP] Recording started - speak now")
             else:
                 self.is_recording = False
                 self._update_status("Error: Mic unavailable")
 
         except Exception as e:
-            print(f"[APP] Start recording error: {e}")
+            _log(f"[APP] Start recording error: {e}")
             self.is_recording = False
 
     def _on_speech_chunk(self, audio_data):
@@ -140,7 +147,7 @@ class MacHyprwhspr(rumps.App):
             text = self.transcriber.transcribe(audio_data)
 
             if text and text.strip():
-                print(f"[APP] Transcribed: {text}")
+                _log(f"[APP] Transcribed: {text}")
                 self.injector.inject(text)
                 self._update_status(f"✓ {text[:25]}...")
             else:
@@ -151,7 +158,7 @@ class MacHyprwhspr(rumps.App):
                 self._update_icon("recording")
 
         except Exception as e:
-            print(f"[APP] Transcription error: {e}")
+            _log(f"[APP] Transcription error: {e}")
 
     def _stop_recording(self):
         """Stop recording"""
@@ -166,7 +173,7 @@ class MacHyprwhspr(rumps.App):
 
         # Stop audio (this will flush any remaining buffer)
         self.audio.stop_recording()
-        print("[APP] Recording stopped")
+        _log("[APP] Recording stopped")
 
     def _update_icon(self, state: str):
         """Update menu bar icon/title"""
@@ -206,9 +213,9 @@ class MacHyprwhspr(rumps.App):
 
 def main():
     """Entry point"""
-    print("mac-hyprwhspr starting...")
-    print("[APP] Shortcut: Double-tap Shift to toggle recording")
-    print("[APP] Mode: Live transcription (speaks as you pause)")
+    _log("mac-hyprwhspr starting...")
+    _log("[APP] Shortcut: Double-tap Shift to toggle recording")
+    _log("[APP] Mode: Live transcription (speaks as you pause)")
 
     app = MacHyprwhspr()
     app.run()

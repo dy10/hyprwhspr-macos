@@ -3,11 +3,28 @@ Whisper transcription for macOS
 Uses pywhispercpp for local inference
 """
 
+import re
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
+
+
+def _log(msg: str) -> None:
+    """Print log message with timestamp"""
+    ts = datetime.now().strftime('%H:%M:%S')
+    print(f"{ts} {msg}")
+
+# Regex to match sound effects in brackets or parentheses
+# Matches: (sighs), [whooshing], (coughing), [music], etc.
+SOUND_EFFECT_PATTERN = re.compile(
+    r'[\[\(]\s*'  # Opening bracket or paren
+    r'[a-zA-Z\s\-]+'  # Words (letters, spaces, hyphens)
+    r'\s*[\]\)]',  # Closing bracket or paren
+    re.IGNORECASE
+)
 
 
 class Transcriber:
@@ -48,10 +65,10 @@ class Transcriber:
                     break
 
             if model_file is None:
-                print(f"[TRANSCRIBER] Model not found in any of:")
+                _log(f"[TRANSCRIBER] Model not found in any of:")
                 for d in possible_dirs:
-                    print(f"  - {d}/ggml-{self.model_name}.bin")
-                print(f"[TRANSCRIBER] Download with: python -c \"from pywhispercpp.model import Model; Model('{self.model_name}')\"")
+                    _log(f"  - {d}/ggml-{self.model_name}.bin")
+                _log(f"[TRANSCRIBER] Download with: python -c \"from pywhispercpp.model import Model; Model('{self.model_name}')\"")
                 return False
 
             # Load model
@@ -61,16 +78,16 @@ class Transcriber:
                 redirect_whispercpp_logs_to=None
             )
 
-            print(f"[TRANSCRIBER] Loaded model: {self.model_name}")
+            _log(f"[TRANSCRIBER] Loaded model: {self.model_name}")
             self.ready = True
             return True
 
         except ImportError:
-            print("[TRANSCRIBER] pywhispercpp not installed")
-            print("[TRANSCRIBER] Install with: pip install pywhispercpp")
+            _log("[TRANSCRIBER] pywhispercpp not installed")
+            _log("[TRANSCRIBER] Install with: pip install pywhispercpp")
             return False
         except Exception as e:
-            print(f"[TRANSCRIBER] Init error: {e}")
+            _log(f"[TRANSCRIBER] Init error: {e}")
             return False
 
     def transcribe(self, audio: np.ndarray, sample_rate: int = 16000) -> str:
@@ -85,7 +102,7 @@ class Transcriber:
             Transcribed text
         """
         if not self.ready or self._model is None:
-            print("[TRANSCRIBER] Not initialized")
+            _log("[TRANSCRIBER] Not initialized")
             return ""
 
         if audio is None or len(audio) == 0:
@@ -101,7 +118,7 @@ class Transcriber:
         # Check for silence
         rms = np.sqrt(np.mean(audio ** 2))
         if rms < 1e-6:
-            print("[TRANSCRIBER] Audio too quiet (silence)")
+            _log("[TRANSCRIBER] Audio too quiet (silence)")
             return ""
 
         try:
@@ -120,17 +137,22 @@ class Transcriber:
                 # Combine segments
                 text = ' '.join(seg.text for seg in segments).strip()
 
-                # Filter hallucination markers
+                # Remove sound effects like (sighs), [whooshing], etc.
+                text = SOUND_EFFECT_PATTERN.sub('', text)
+                text = ' '.join(text.split())  # Normalize whitespace
+
+                # Filter hallucination markers (if entire text is just this)
                 normalized = text.lower().replace('_', ' ').strip('[]() ')
-                hallucinations = ('blank audio', 'blank', 'music', 'music playing')
+                hallucinations = ('blank audio', 'blank', 'music', 'music playing', '')
                 if normalized in hallucinations:
-                    print(f"[TRANSCRIBER] Hallucination filtered: {text}")
+                    if text:
+                        _log(f"[TRANSCRIBER] Hallucination filtered: {text}")
                     return ""
 
                 return text
 
         except Exception as e:
-            print(f"[TRANSCRIBER] Error: {e}")
+            _log(f"[TRANSCRIBER] Error: {e}")
             return ""
 
     def get_available_models(self) -> list:

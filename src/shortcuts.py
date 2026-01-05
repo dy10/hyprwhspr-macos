@@ -4,7 +4,14 @@ Requires Accessibility permissions in System Preferences
 """
 
 import threading
+from datetime import datetime
 from typing import Callable, Optional, Set
+
+
+def _log(msg: str) -> None:
+    """Print log message with timestamp"""
+    ts = datetime.now().strftime('%H:%M:%S')
+    print(f"{ts} {msg}")
 
 from Quartz import (
     CGEventTapCreate,
@@ -133,7 +140,7 @@ class DoubleTapShortcut:
                                 now = time.time()
                                 if now - self._last_release_time < self.tap_interval:
                                     # Double tap detected!
-                                    print("[SHORTCUT] Double-tap detected!")
+                                    _log("[SHORTCUT] Double-tap detected!")
                                     self._last_release_time = 0  # Reset
                                     if self.callback:
                                         threading.Thread(target=self.callback, daemon=True).start()
@@ -170,7 +177,7 @@ class DoubleTapShortcut:
             CFRunLoopAddSource(self._run_loop, run_loop_source, kCFRunLoopCommonModes)
             CGEventTapEnable(self._tap, True)
 
-            print(f"[SHORTCUTS] Listening for double-tap {self.modifier}")
+            _log(f"[SHORTCUTS] Listening for double-tap {self.modifier}")
             CFRunLoopRun()
 
         except Exception as e:
@@ -355,7 +362,7 @@ class GlobalShortcuts:
             # Enable the tap
             CGEventTapEnable(self._tap, True)
 
-            print(f"[SHORTCUTS] Listening for {self.shortcut}")
+            _log(f"[SHORTCUTS] Listening for {self.shortcut}")
 
             # Run the loop
             CFRunLoopRun()

@@ -5,10 +5,17 @@ Supports VAD-based streaming for live transcription
 
 import threading
 import time
+from datetime import datetime
 from typing import Optional, Callable, List
 
 import numpy as np
 import sounddevice as sd
+
+
+def _log(msg: str) -> None:
+    """Print log message with timestamp"""
+    ts = datetime.now().strftime('%H:%M:%S')
+    print(f"{ts} {msg}")
 
 
 class AudioCapture:
@@ -57,10 +64,10 @@ class AudioCapture:
 
             # Test device
             device_info = sd.query_devices(kind='input')
-            print(f"[AUDIO] Using: {device_info['name']}")
+            _log(f"[AUDIO] Using: {device_info['name']}")
 
         except Exception as e:
-            print(f"[AUDIO] Init error: {e}")
+            _log(f"[AUDIO] Init error: {e}")
 
     @staticmethod
     def list_devices():
@@ -99,7 +106,7 @@ class AudioCapture:
             return True
 
         if not self.is_available():
-            print("[AUDIO] No input device available")
+            _log("[AUDIO] No input device available")
             return False
 
         try:
@@ -113,7 +120,7 @@ class AudioCapture:
 
             def callback(indata, frames, time_info, status):
                 if status:
-                    print(f"[AUDIO] Status: {status}")
+                    _log(f"[AUDIO] Status: {status}")
 
                 with self._lock:
                     if not self.is_recording:
@@ -146,7 +153,7 @@ class AudioCapture:
                         try:
                             streaming_callback(chunk)
                         except Exception as e:
-                            print(f"[AUDIO] Streaming callback error: {e}")
+                            _log(f"[AUDIO] Streaming callback error: {e}")
 
             self._stream = sd.InputStream(
                 samplerate=self.sample_rate,
@@ -160,7 +167,7 @@ class AudioCapture:
             return True
 
         except Exception as e:
-            print(f"[AUDIO] Start error: {e}")
+            _log(f"[AUDIO] Start error: {e}")
             self.is_recording = False
             return False
 
@@ -188,7 +195,7 @@ class AudioCapture:
                         daemon=True
                     ).start()
                 except Exception as e:
-                    print(f"[AUDIO] VAD callback error: {e}")
+                    _log(f"[AUDIO] VAD callback error: {e}")
 
     def stop_recording(self) -> Optional[np.ndarray]:
         """Stop recording and return audio data"""
