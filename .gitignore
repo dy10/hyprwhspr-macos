@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+.myenv/
+pip-log.txt
+.pip/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Environment variables
+.env
+.env.*
+*.env
+
+# Debug
+debug_keys.py
+
+# Config (user-specific)
+config/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Audio files (temporary recordings)
+*.wav
+*.mp3
+*.m4a
+recordings/
