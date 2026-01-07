@@ -9,7 +9,7 @@ import time
 import signal
 
 from src.config import Config
-from src.shortcuts import DoubleTapShortcut
+from src.shortcuts import DoubleTapShortcut, SingleKeyShortcut
 from src.audio import AudioCapture
 from src.transcriber import Transcriber
 from src.text_injector import TextInjector
@@ -24,6 +24,7 @@ class CLI:
         self.transcriber = Transcriber(self.config)
         self.injector = TextInjector(self.config)
         self.shortcuts = None
+        self.f5_shortcut = None
 
         self.is_recording = False
         self.running = True
@@ -54,6 +55,13 @@ class CLI:
             print("[ERROR] Grant Accessibility permission in System Preferences")
             return False
 
+        # Setup F5 (keycode 96) shortcut
+        self.f5_shortcut = SingleKeyShortcut(
+            keycode=96,
+            callback=self._on_shortcut
+        )
+        self.f5_shortcut.start()
+
         return True
 
     def _on_shortcut(self):
@@ -69,7 +77,7 @@ class CLI:
             return
 
         self.is_recording = True
-        print("\n🔴 Recording... (double-tap Shift to stop)")
+        print("\n🔴 Recording... (double-tap Shift or F5 to stop)")
 
         if not self.audio.start_recording(vad_callback=self._on_speech_chunk):
             print("[ERROR] Failed to start recording")
@@ -102,7 +110,7 @@ class CLI:
     def run(self):
         """Main loop"""
         print("\n[CLI] Ready!")
-        print("[CLI] Double-tap Shift to start/stop recording")
+        print("[CLI] Double-tap Shift or press F5 to start/stop recording")
         print("[CLI] Ctrl+C to quit\n")
 
         def handle_sigint(sig, frame):
@@ -122,6 +130,8 @@ class CLI:
             self._stop_recording()
         if self.shortcuts:
             self.shortcuts.stop()
+        if self.f5_shortcut:
+            self.f5_shortcut.stop()
         print("[CLI] Goodbye!")
 
 

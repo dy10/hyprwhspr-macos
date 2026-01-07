@@ -19,7 +19,7 @@ def _log(msg: str) -> None:
     print(f"{ts} {msg}")
 
 from src.config import Config
-from src.shortcuts import DoubleTapShortcut
+from src.shortcuts import DoubleTapShortcut, SingleKeyShortcut
 from src.audio import AudioCapture
 from src.transcriber import Transcriber
 from src.text_injector import TextInjector
@@ -42,6 +42,7 @@ class MacHyprwhspr(rumps.App):
         self.transcriber = Transcriber(self.config)
         self.injector = TextInjector(self.config)
         self.shortcuts = None
+        self.f5_shortcut = None
 
         # State
         self.is_recording = False
@@ -49,7 +50,7 @@ class MacHyprwhspr(rumps.App):
         self._lock = threading.Lock()
 
         # Build menu items
-        self._record_btn = rumps.MenuItem("Start Recording (Shift+Shift)", callback=self.toggle_recording)
+        self._record_btn = rumps.MenuItem("Start Recording (Shift+Shift / F5)", callback=self.toggle_recording)
         self._status_item = rumps.MenuItem("Status: Idle", callback=None)
 
         # Build menu
@@ -99,8 +100,15 @@ class MacHyprwhspr(rumps.App):
             )
             return
 
+        # Setup F5 (keycode 96) shortcut
+        self.f5_shortcut = SingleKeyShortcut(
+            keycode=96,
+            callback=self._on_shortcut
+        )
+        self.f5_shortcut.start()
+
         self._update_status("Ready")
-        _log("[APP] Ready - Double-tap Shift to start/stop dictation")
+        _log("[APP] Ready - Double-tap Shift or press F5 to start/stop dictation")
 
     def _on_shortcut(self):
         """Handle double-shift shortcut"""
@@ -125,7 +133,7 @@ class MacHyprwhspr(rumps.App):
             if self.audio.start_recording(vad_callback=self._on_speech_chunk):
                 self._update_icon("recording")
                 self._update_status("Listening...")
-                self._record_btn.title = "Stop Recording (Shift+Shift)"
+                self._record_btn.title = "Stop Recording (Shift+Shift / F5)"
                 _log("[APP] Recording started - speak now")
             else:
                 self.is_recording = False
@@ -169,7 +177,7 @@ class MacHyprwhspr(rumps.App):
 
         self._update_icon("idle")
         self._update_status("Stopped")
-        self._record_btn.title = "Start Recording (Shift+Shift)"
+        self._record_btn.title = "Start Recording (Shift+Shift / F5)"
 
         # Stop audio (this will flush any remaining buffer)
         self.audio.stop_recording()
@@ -194,7 +202,7 @@ class MacHyprwhspr(rumps.App):
 
         message = (
             f"Current Settings:\n\n"
-            f"Shortcut: Double-tap Shift\n"
+            f"Shortcut: Double-tap Shift or F5\n"
             f"Model: {model}\n"
             f"Mode: Live streaming (VAD)\n\n"
             f"Edit config at:\n{self.config.config_file}"
@@ -208,13 +216,15 @@ class MacHyprwhspr(rumps.App):
             self._stop_recording()
         if self.shortcuts:
             self.shortcuts.stop()
+        if self.f5_shortcut:
+            self.f5_shortcut.stop()
         rumps.quit_application()
 
 
 def main():
     """Entry point"""
     _log("mac-hyprwhspr starting...")
-    _log("[APP] Shortcut: Double-tap Shift to toggle recording")
+    _log("[APP] Shortcut: Double-tap Shift or F5 to toggle recording")
     _log("[APP] Mode: Live transcription (speaks as you pause)")
 
     app = MacHyprwhspr()

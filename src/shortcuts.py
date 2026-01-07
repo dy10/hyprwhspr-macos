@@ -414,3 +414,114 @@ class GlobalShortcuts:
     def is_active(self) -> bool:
         """Check if shortcuts are active"""
         return self.is_running and self._tap is not None
+
+
+class SingleKeyShortcut:
+    """Detect single key press by keycode (no modifiers required)"""
+
+    def __init__(
+        self,
+        keycode: int,
+        callback: Optional[Callable] = None,
+    ):
+        self.keycode = keycode
+        self.callback = callback
+
+        # State
+        self.is_running = False
+
+        # Threading
+        self._tap = None
+        self._run_loop = None
+        self._thread = None
+
+    def _event_callback(self, proxy, event_type, event, refcon):
+        """CGEvent callback for single key detection"""
+        try:
+            if event_type == kCGEventKeyDown:
+                keycode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode)
+                flags = CGEventGetFlags(event)
+
+                # Check no modifiers are held
+                modifier_mask = (
+                    kCGEventFlagMaskCommand |
+                    kCGEventFlagMaskShift |
+                    kCGEventFlagMaskAlternate |
+                    kCGEventFlagMaskControl
+                )
+
+                if keycode == self.keycode and not (flags & modifier_mask):
+                    _log(f"[SHORTCUT] Key {self.keycode} pressed!")
+                    if self.callback:
+                        threading.Thread(target=self.callback, daemon=True).start()
+
+        except Exception as e:
+            print(f"Error in single-key callback: {e}")
+
+        return event
+
+    def _run_loop_thread(self):
+        """Run the event tap"""
+        try:
+            event_mask = CGEventMaskBit(kCGEventKeyDown)
+
+            self._tap = CGEventTapCreate(
+                kCGSessionEventTap,
+                kCGHeadInsertEventTap,
+                1,  # Passive - don't suppress events
+                event_mask,
+                self._event_callback,
+                None
+            )
+
+            if self._tap is None:
+                print("ERROR: Failed to create event tap for single-key!")
+                print("Grant Accessibility permission in System Preferences")
+                return
+
+            run_loop_source = CFMachPortCreateRunLoopSource(None, self._tap, 0)
+            self._run_loop = CFRunLoopGetCurrent()
+            CFRunLoopAddSource(self._run_loop, run_loop_source, kCFRunLoopCommonModes)
+            CGEventTapEnable(self._tap, True)
+
+            _log(f"[SHORTCUTS] Listening for keycode {self.keycode}")
+            CFRunLoopRun()
+
+        except Exception as e:
+            print(f"Error in single-key thread: {e}")
+
+    def start(self) -> bool:
+        """Start listening"""
+        if self.is_running:
+            return True
+
+        self._thread = threading.Thread(target=self._run_loop_thread, daemon=True)
+        self._thread.start()
+
+        import time
+        time.sleep(0.2)
+
+        if self._tap is None:
+            return False
+
+        self.is_running = True
+        return True
+
+    def stop(self):
+        """Stop listening"""
+        if not self.is_running:
+            return
+
+        self.is_running = False
+
+        if self._run_loop:
+            CFRunLoopStop(self._run_loop)
+
+        if self._tap:
+            CGEventTapEnable(self._tap, False)
+
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=1.0)
+
+        self._tap = None
+        self._run_loop = None
